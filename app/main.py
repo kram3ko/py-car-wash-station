@@ -1,68 +1,73 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Type
+
+
+@dataclass
+class Validator:
+    min_value: int
+    max_value: int
+
+    def __set_name__(self, owner: Type, name: str) -> None:
+        self.protected_name = f"_{name}"
+
+    def __get__(self, instance: object, owner: Type) -> Type:
+        return getattr(instance, self.protected_name, None)
+
+    def __set__(self, instance: Type, value: float) -> None:
+        if not self.min_value <= value <= self.max_value:
+            raise ValueError(f"value = {value} must be in range: "
+                             f"{self.min_value} and {self.max_value}")
+        setattr(instance, self.protected_name, value)
+
+
+@dataclass
 class Car:
-    cars_list = []
-
-    def __init__(self, comfort_class: int,
-                 clean_mark: int, brand: str) -> None:
-        if not (1 <= comfort_class <= 7):
-            raise ValueError("Comfort class must be between 1 and 7.")
-        if not (1 <= clean_mark <= 10):
-            raise ValueError("Clean_mark must be between 1 and 10.")
-
-        self.comfort_class = comfort_class
-        self.clean_mark = clean_mark
-        self.brand = brand
-        Car.cars_list.append(self)
-
-    @property
-    def show_cars_list(self) -> list:
-        return Car.cars_list
-
-    def __repr__(self) -> str:
-        return ", ".join(f"{key}={value!r}" for key, value
-                         in self.__dict__.items())
+    comfort_class: float = Validator(1, 7)
+    clean_mark: int = Validator(1, 10)
+    brand: str = None
 
 
+@dataclass
 class CarWashStation:
-    def __init__(self, distance_from_city_center: float,
-                 clean_power: int, average_rating: float,
-                 count_of_ratings: int) -> None:
-        if not (0 <= distance_from_city_center <= 10):
-            raise ValueError("distance from city must be between 0 and 10")
-        if not (1 <= average_rating <= 5):
-            raise ValueError("average raiting must be between 1 and 5")
-        self.distance_from_city_center = distance_from_city_center
-        self.clean_power = clean_power
-        self.average_rating = average_rating
-        self.count_of_ratings = count_of_ratings
+    distance_from_city_center: float = Validator(1, 10)
+    clean_power: int = None
+    average_rating: float = Validator(1, 5)
+    count_of_ratings: int = None
 
-    def wash_single_car(self, one_car: Car) -> Car:
+    def wash_single_car(self, one_car: Car) -> float:
         if self.clean_power > one_car.clean_mark:
+            price = self.calculate_washing_price(one_car)
             one_car.clean_mark = self.clean_power
-            return one_car
+            return price
+        return 0.0
 
     def calculate_washing_price(self, car: Car) -> float:
-        income = 0
-        formula = (car.comfort_class * (self.clean_power - car.clean_mark)
-                   * self.average_rating / self.distance_from_city_center)
-        income += round(float(f"{formula: .2f}"), 1)
-        return income
+        price = ((car.comfort_class
+                  * (self.clean_power - car.clean_mark)
+                  * self.average_rating)
+                 / self.distance_from_city_center)
+
+        return round(price, 1)
 
     def serve_cars(self, car_list: list[Car]) -> int:
-        income = 0
-        for car in car_list:
-            if car.clean_mark < self.clean_power:
-                income += self.calculate_washing_price(car)
-                self.wash_single_car(car)
-        return income
+        return sum(self.wash_single_car(car) for car in car_list)
 
-    def rate_service(self, rate: int) -> float:
-
-        formula = (((self.average_rating * self.count_of_ratings) + rate)
-                   / (self.count_of_ratings + 1))
-        self.average_rating = round(float(f"{formula}"), 1)
+    def rate_service(self, rate: int) -> None:
+        rating = (((self.average_rating
+                    * self.count_of_ratings) + rate)
+                  / (self.count_of_ratings + 1))
+        self.average_rating = round(rating, 1)
         self.count_of_ratings += 1
-        return self.average_rating
 
-    def __repr__(self) -> str:
-        return ", ".join(f"{key}={value!r}" for key, value
-                         in self.__dict__.items())
+
+def main() -> None:
+    pass
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except ValueError as e_info:
+        print(e_info)
